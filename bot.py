@@ -740,6 +740,7 @@ def schedule_return_menu(jq, user_id, chat_id):
             await clear_client_menu(ctx, user_id)
             sent = await ctx.bot.send_message(chat_id=chat_id, text=WELCOME_TEXT, reply_markup=amounts_kb())
             save_client_menu(ctx, user_id, sent.chat_id, sent.message_id)
+            set_client_state_override(ctx, user_id, S_AMOUNT)
 
     jq.run_once(cb, when=timedelta(seconds=RETURN_TO_MENU_SECONDS), name=f"ret_{user_id}")
 
@@ -1410,6 +1411,7 @@ async def on_admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         clear_awaiting_receipt(uid)
         clear_client_pending(uid)
         _mark_receipt_completed(context, uid)  # התזכורת לא תישלח – ההפקדה הושלמה
+        set_client_state_override(context, uid, S_AMOUNT)
         await _remove_admin_revoke_buttons(context, uid)  # מסיר כפתור Revoke כי התשלום אושר
         jq = getattr(context, "job_queue", None) or (getattr(context.application, "job_queue", None) if context.application else None)
         cancel_jobs(jq, f"rem_{uid}")
