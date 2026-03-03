@@ -1,0 +1,2 @@
+cd ~/deposit_bot
+grep -n "<<<<<<< Updated upstream" bot.py

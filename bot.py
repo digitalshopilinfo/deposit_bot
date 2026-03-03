@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 """
 בוט הפקדות טלגרם - צד לקוח + צד עובד (Back Office)
 python-telegram-bot v20+
@@ -7,21 +6,12 @@ import asyncio
 import os
 import re
 import time
-=======
-import os
->>>>>>> Stashed changes
 import sqlite3
 import logging
 import html
 from datetime import datetime, timedelta
-<<<<<<< Updated upstream
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot
-=======
-
-from dotenv import load_dotenv
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
->>>>>>> Stashed changes
 from telegram.constants import ParseMode
 from telegram.ext import (
     ApplicationBuilder,
@@ -35,8 +25,7 @@ from telegram.ext import (
 # =========================
 # CONFIG
 # =========================
-<<<<<<< Updated upstream
-load_dotenv()
+load_dotenv("_env")
 
 BOT_TOKEN = (os.getenv("BOT_TOKEN") or "").strip()
 ADMIN_CHAT_ID = int((os.getenv("ADMIN_CHAT_ID") or "0").strip() or "0")
@@ -47,28 +36,11 @@ if _raw:
         if x.strip().isdigit():
             ADMIN_USER_IDS.add(int(x.strip()))
 DB_PATH = os.getenv("DB_PATH") or "deposit_bot.db"
-=======
-load_dotenv("_env")  # טוען מ-_env (אפשר גם .env)
-
-BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
-ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID", "0").strip() or "0")
-
-ADMIN_USER_IDS = set()
-_raw_admins = os.getenv("ADMIN_USER_IDS", "").strip()
-if _raw_admins:
-    for x in _raw_admins.split(","):
-        x = x.strip()
-        if x.isdigit():
-            ADMIN_USER_IDS.add(int(x))
-
-DB_PATH = os.getenv("DB_PATH", "deposit_bot.db")
->>>>>>> Stashed changes
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 logger = logging.getLogger(__name__)
 
 # =========================
-<<<<<<< Updated upstream
 # FLOW
 # =========================
 QUICK_AMOUNTS = [300, 400, 500, 600, 700, 800, 900, 1000]
@@ -176,60 +148,6 @@ S_WAIT_PAYMENT_DETAILS, S_WAIT_RECEIPT, S_WAIT_RECEIPT_MORE, S_LOCKED = (
     "WAIT_PAYMENT_DETAILS", "WAIT_RECEIPT", "WAIT_RECEIPT_MORE", "LOCKED"
 )
 EMPLOYEE_PENDING_STATES = (S_AWAIT_USERNAME_VALIDATION, S_WAIT_PAYMENT_DETAILS, S_WAIT_RECEIPT, S_WAIT_RECEIPT_MORE)
-=======
-# FLOW SETTINGS
-# =========================
-QUICK_AMOUNTS = [300, 400, 500, 600, 700, 800, 900, 1000]
-CUSTOM_MIN_AMOUNT = 1000  # סכום אחר מינימום 1000+
-
-PAYMENT_METHODS = [
-    ("bit", "Bit"),
-    ("bank", "העברה בנקאית"),
-    ("paybox", "PayBox"),
-]
-
-WELCOME_TEXT = (
-    "ברוכים הבאים, לבוט ההפקדות של 888\n"
-    "זמן ההפקדה פחות מדקה ותוכלי להתחיל לשחק מיידי!\n\n"
-    "כמה אתה רוצה להפקיד?"
-)
-
-SITE_USER_TEXT = (
-    "כדי לשייך את ההפקדה שלך,\n"
-    "אנא כתוב את שם המשתמש שלך באתר, **חשוב מאוד** בדיוק כמו שמופיע באתר (אפשר להעתיק ולהדביק)."
-)
-
-WAIT_FOR_DETAILS_TEXT = "אנא המתן מיד נשלח לך פרטי העברה.. ⏳"
-
-RECEIPT_ONLY_PHOTO_TEXT = "כאן אפשר לשלוח *רק צילום מסך* של האסמכתא (תמונה בלבד)."
-
-AFTER_RECEIPT_TEXT = "קיבלתי ✅\nשולח לבדיקה, נעדכן אותך פה"
-
-SUCCESS_TEXT = "✅ ההפקדה שלך בוצע בהצלחה ויתרת הנקודות באתר התעדכנה"
-PROBLEM_TEXT = "❌ יש בעיה עם ההפקדה שלך, אנה פנה לנציג שירות בשעות הפעילות להמשך בירור (14:00-22:00)"
-MORE_INFO_TEXT = (
-    "🔄 לא הצלחנו לאמת את התשלום. שלח אסמכתא ברורה/בדוק פרטים.\n"
-    "יש לשים לב שמספר האסמכתא, הסכום, התאריך והשעה מופיעים בצורה ברורה!\n\n"
-    "שלח עכשיו צילום מסך חדש וברור (תמונה בלבד)."
-)
-
-REMINDER_TEXT = "תזכורת⏱️ אם כבר ביצעת תשלום – שלח צילום מסך של האסמכתא כדי להשלים את ההפקדה."
-REMINDER_MINUTES = 7
-
-RETURN_TO_MENU_SECONDS = 120  # אחרי הצלחה: 2 דקות לחזרה לתפריט
-
-# =========================
-# STATES (user-side)
-# =========================
-S_AMOUNT = "AMOUNT"
-S_CUSTOM_AMOUNT = "CUSTOM_AMOUNT"
-S_SITE_USER = "SITE_USER"
-S_METHOD = "METHOD"
-S_WAIT_PAYMENT_DETAILS = "WAIT_PAYMENT_DETAILS"
-S_WAIT_RECEIPT = "WAIT_RECEIPT"
-S_WAIT_RECEIPT_MORE = "WAIT_RECEIPT_MORE"
-S_LOCKED = "LOCKED"
->>>>>>> Stashed changes
 
 # =========================
 # DB
@@ -239,7 +157,6 @@ def db():
     conn.row_factory = sqlite3.Row
     return conn
 
-<<<<<<< Updated upstream
 def now_utc():
     return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -250,30 +167,16 @@ def gen_request_id():
 def init_db():
     c = db()
     cur = c.cursor()
-=======
-def init_db():
-    conn = db()
-    cur = conn.cursor()
-
->>>>>>> Stashed changes
     cur.execute("""
         CREATE TABLE IF NOT EXISTS locks (
             user_id INTEGER PRIMARY KEY,
             locked INTEGER NOT NULL DEFAULT 0
         )
     """)
-<<<<<<< Updated upstream
     cur.execute("""
         CREATE TABLE IF NOT EXISTS requests (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             request_id TEXT,
-=======
-
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS requests (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            request_id TEXT UNIQUE,
->>>>>>> Stashed changes
             user_id INTEGER,
             username TEXT,
             amount INTEGER,
@@ -283,7 +186,6 @@ def init_db():
             created_at TEXT
         )
     """)
-<<<<<<< Updated upstream
     cur.execute("""
         CREATE TABLE IF NOT EXISTS admin_pending (
             admin_id INTEGER PRIMARY KEY,
@@ -506,89 +408,10 @@ def clear_awaiting_username(user_id):
     c.cursor().execute("DELETE FROM awaiting_username WHERE user_id=?", (user_id,))
     c.commit()
     c.close()
-=======
-
-    # pending guidance for admins (admin clicks button -> next message becomes details)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS admin_pending (
-            admin_id INTEGER,
-            user_id INTEGER,
-            method TEXT,
-            created_at TEXT,
-            PRIMARY KEY (admin_id)
-        )
-    """)
-
-    conn.commit()
-    conn.close()
-
-def now_utc():
-    return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-
-def gen_request_id():
-    import random
-    return f"DEP-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{random.randint(1000,9999)}"
-
-def log_request(rid: str, user_id: int, username: str, amount: int, site_user: str, method: str, status: str):
-    conn = db()
-    cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO requests(request_id, user_id, username, amount, site_user, method, status, created_at)
-        VALUES(?, ?, ?, ?, ?, ?, ?, ?)
-    """, (rid, user_id, username or "", amount, site_user, method, status, now_utc()))
-    conn.commit()
-    conn.close()
-
-def is_locked(user_id: int) -> bool:
-    conn = db()
-    cur = conn.cursor()
-    cur.execute("SELECT locked FROM locks WHERE user_id=?", (user_id,))
-    row = cur.fetchone()
-    conn.close()
-    return bool(row["locked"]) if row else False
-
-def set_locked(user_id: int, locked: bool):
-    conn = db()
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO locks(user_id, locked) VALUES(?, ?) "
-        "ON CONFLICT(user_id) DO UPDATE SET locked=excluded.locked",
-        (user_id, 1 if locked else 0),
-    )
-    conn.commit()
-    conn.close()
-
-def set_admin_pending(admin_id: int, user_id: int, method: str):
-    conn = db()
-    cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO admin_pending(admin_id, user_id, method, created_at)
-        VALUES(?, ?, ?, ?)
-        ON CONFLICT(admin_id) DO UPDATE SET user_id=excluded.user_id, method=excluded.method, created_at=excluded.created_at
-    """, (admin_id, user_id, method, now_utc()))
-    conn.commit()
-    conn.close()
-
-def get_admin_pending(admin_id: int):
-    conn = db()
-    cur = conn.cursor()
-    cur.execute("SELECT user_id, method, created_at FROM admin_pending WHERE admin_id=?", (admin_id,))
-    row = cur.fetchone()
-    conn.close()
-    return row
-
-def clear_admin_pending(admin_id: int):
-    conn = db()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM admin_pending WHERE admin_id=?", (admin_id,))
-    conn.commit()
-    conn.close()
->>>>>>> Stashed changes
 
 # =========================
 # HELPERS
 # =========================
-<<<<<<< Updated upstream
 def is_admin(uid):
     return uid in ADMIN_USER_IDS
 
@@ -621,26 +444,11 @@ def set_client_state_override(ctx, uid, state, **kw):
 
 def reset_flow(ctx):
     job = ctx.user_data.get("reminder_job")
-=======
-def is_admin(user_id: int) -> bool:
-    return user_id in ADMIN_USER_IDS
-
-def set_state(context: ContextTypes.DEFAULT_TYPE, state: str):
-    context.user_data["state"] = state
-
-def get_state(context: ContextTypes.DEFAULT_TYPE) -> str:
-    return context.user_data.get("state", S_AMOUNT)
-
-def reset_flow(context: ContextTypes.DEFAULT_TYPE):
-    # cancel any reminder job stored in user_data
-    job = context.user_data.get("reminder_job")
->>>>>>> Stashed changes
     if job:
         try:
             job.schedule_removal()
         except Exception:
             pass
-<<<<<<< Updated upstream
     ctx.user_data.clear()
     set_state(ctx, S_AMOUNT)
 
@@ -648,83 +456,15 @@ def cancel_jobs(jq, name):
     if not jq:
         return
     for j in list(jq.jobs()):
-=======
-    context.user_data.clear()
-    set_state(context, S_AMOUNT)
-
-def amounts_kb():
-    rows = []
-    row = []
-    for a in QUICK_AMOUNTS:
-        row.append(InlineKeyboardButton(str(a), callback_data=f"amt:{a}"))
-        if len(row) == 4:
-            rows.append(row)
-            row = []
-    if row:
-        rows.append(row)
-    rows.append([InlineKeyboardButton("סכום אחר ✍️", callback_data="amt:custom")])
-    # אין "ביטול" לפי בקשתך
-    return InlineKeyboardMarkup(rows)
-
-def methods_kb():
-    rows = [[InlineKeyboardButton(lbl, callback_data=f"pm:{key}")] for key, lbl in PAYMENT_METHODS]
-    rows.append([InlineKeyboardButton("🔙 חזרה", callback_data="nav:back_to_siteuser")])
-    rows.append([InlineKeyboardButton("🏠 תפריט ראשי", callback_data="nav:home")])
-    return InlineKeyboardMarkup(rows)
-
-def back_home_kb(back_cb: str):
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔙 חזרה", callback_data=back_cb)],
-        [InlineKeyboardButton("🏠 תפריט ראשי", callback_data="nav:home")],
-    ])
-
-def admin_payment_details_kb(user_id: int, method_key: str):
-    # button guides admin to send details (next message becomes details)
-    label = {
-        "bit": "📤 שלח פרטי Bit",
-        "paybox": "📤 שלח פרטי PayBox",
-        "bank": "📤 שלח פרטי העברה בנקאית",
-    }.get(method_key, "📤 שלח פרטי תשלום")
-
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton(label, callback_data=f"adp:{method_key}:{user_id}")],
-        [InlineKeyboardButton("🔓 שחרור נעילה", callback_data=f"ad:unlock:{user_id}")],
-        [InlineKeyboardButton("🚫 חסימה/נעילה", callback_data=f"ad:block:{user_id}")],
-    ])
-
-def admin_receipt_ticket_kb(rid: str, user_id: int):
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("✅ ההפקדה שלך בוצע בהצלחה ויתרת הנקודות באתר התעדכנה", callback_data=f"ad:ok:{rid}:{user_id}")],
-        [InlineKeyboardButton("❌ יש בעיה עם ההפקדה שלך, אנה פנה לנציג שירות בשעות הפעילות להמשך בירור (14:00-22:00)", callback_data=f"ad:problem:{rid}:{user_id}")],
-        [InlineKeyboardButton("🔄 לא הצלחנו לאמת את התשלום. שלח אסמכתא ברורה/בדוק פרטים. יש לשים לב שמספר האסמכתא, הסכום, התאריך והשעה מופיעים בצורה ברורה!", callback_data=f"ad:more:{rid}:{user_id}")],
-        [InlineKeyboardButton("🔓 שחרור נעילה", callback_data=f"ad:unlock:{user_id}")],
-        [InlineKeyboardButton("🚫 חסימה/נעילה", callback_data=f"ad:block:{user_id}")],
-    ])
-
-# פילטר: צ'אט פרטי או קבוצה (למעט צ'אט האדמין)
-def _user_chat_filter():
-    base = filters.ChatType.PRIVATE
-    if ADMIN_CHAT_ID:
-        base = base | ((filters.ChatType.GROUP | filters.ChatType.SUPERGROUP) & ~filters.Chat(ADMIN_CHAT_ID))
-    else:
-        base = base | (filters.ChatType.GROUP | filters.ChatType.SUPERGROUP)
-    return base
-
-USER_CHAT_FILTER = _user_chat_filter()
-
-def cancel_jobs_by_name(job_queue, name: str):
-    # best-effort: remove all jobs with this name
-    if not job_queue:
-        return
-    for j in list(job_queue.jobs()):
->>>>>>> Stashed changes
         if j.name == name:
             try:
                 j.schedule_removal()
             except Exception:
                 pass
 
-<<<<<<< Updated upstream
+def cancel_jobs_by_name(job_queue, name):
+    cancel_jobs(job_queue, name)
+
 def _receipt_completed_set(ctx):
     if "receipt_completed_user_ids" not in ctx.bot_data:
         ctx.bot_data["receipt_completed_user_ids"] = set()
@@ -1065,7 +805,11 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg, parse = get_waiting_msg_for_employee_pending(state)
         kw = {"parse_mode": parse} if parse else {}
         return await update.message.reply_text(msg, **kw)
-=======
+    await show_start(update, context)
+
+async def cmd_myid(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(f"user_id: {update.effective_user.id}\nchat_id: {update.effective_chat.id}")
+
 def schedule_receipt_reminder(context: ContextTypes.DEFAULT_TYPE, user_chat_id: int, user_id: int):
     # cancel existing reminder for that user
     cancel_jobs_by_name(context.job_queue, f"rem_{user_id}")
@@ -1186,14 +930,12 @@ async def ask_method(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # USER COMMANDS
 # =========================
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
->>>>>>> Stashed changes
     await show_start(update, context)
 
 async def cmd_myid(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"user_id: {update.effective_user.id}\nchat_id: {update.effective_chat.id}")
 
 # =========================
-<<<<<<< Updated upstream
 # CLIENT: CALLBACKS (inline buttons)
 # =========================
 async def on_client_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1248,132 +990,25 @@ async def on_client_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         set_state(context, S_METHOD)
         return await ask_method(update, context)
 
-=======
-# ADMIN COMMANDS (optional shortcuts)
-# =========================
-async def cmd_unlock(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update.effective_user.id):
-        return
-    if not context.args or not context.args[0].isdigit():
-        await update.message.reply_text("שימוש: /unlock <user_id>")
-        return
-    uid = int(context.args[0])
-    set_locked(uid, False)
-    await update.message.reply_text(f"🔓 שוחרר נעילה למשתמש {uid}")
-    try:
-        await context.bot.send_message(chat_id=uid, text="🔓 שוחררת. אפשר להתחיל הפקדה מחדש עם /start")
-    except Exception:
-        pass
-
-async def cmd_block(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update.effective_user.id):
-        return
-    if not context.args or not context.args[0].isdigit():
-        await update.message.reply_text("שימוש: /block <user_id>")
-        return
-    uid = int(context.args[0])
-    set_locked(uid, True)
-    await update.message.reply_text(f"🚫 המשתמש {uid} ננעל/נחסם.")
-
-async def cmd_bit(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update.effective_user.id):
-        return
-    if len(context.args) < 2 or not context.args[0].isdigit():
-        await update.message.reply_text("שימוש: /bit <user_id> <מספר/טקסט ביט>")
-        return
-    uid = int(context.args[0])
-    details = " ".join(context.args[1:]).strip()
-    await send_payment_details_and_request_photo(context, uid, "bit", details)
-    await update.message.reply_text("✅ נשלחו פרטי Bit ללקוח")
-
-async def cmd_paybox(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update.effective_user.id):
-        return
-    if len(context.args) < 2 or not context.args[0].isdigit():
-        await update.message.reply_text("שימוש: /paybox <user_id> <מספר/טקסט פייבוקס>")
-        return
-    uid = int(context.args[0])
-    details = " ".join(context.args[1:]).strip()
-    await send_payment_details_and_request_photo(context, uid, "paybox", details)
-    await update.message.reply_text("✅ נשלחו פרטי PayBox ללקוח")
-
-async def cmd_bank(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update.effective_user.id):
-        return
-    if len(context.args) < 2 or not context.args[0].isdigit():
-        await update.message.reply_text("שימוש: /bank <user_id> <פרטי העברה בנקאית...>")
-        return
-    uid = int(context.args[0])
-    details = " ".join(context.args[1:]).strip()
-    await send_payment_details_and_request_photo(context, uid, "bank", details)
-    await update.message.reply_text("✅ נשלחו פרטי העברה בנקאית ללקוח")
-
-async def cmd_cancelpay(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # admin-only: clears pending guidance
-    if not is_admin(update.effective_user.id):
-        return
-    clear_admin_pending(update.effective_user.id)
-    await update.message.reply_text("בוטל מצב שליחת פרטי תשלום (Pending).")
-
-# =========================
-# CALLBACKS
-# =========================
-async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    data = q.data
-    user_id = update.effective_user.id
-
-    # if user is locked, stop user flow (admin callbacks still allowed)
-    if is_locked(user_id) and not (data.startswith("ad:") or data.startswith("adp:")):
-        await q.answer()
-        return await q.edit_message_text("הפנייה שלך נמצאת בבדיקה מול נציג. בשלב זה אי אפשר להמשיך בבוט עד שתקבל עדכון.")
-
-    # NAV
-    if data == "nav:home":
-        return await show_start(update, context)
-
-    if data == "nav:back_to_amount":
-        await q.answer()
-        set_state(context, S_AMOUNT)
-        return await q.edit_message_text(WELCOME_TEXT, reply_markup=amounts_kb())
-
-    if data == "nav:back_to_siteuser":
-        await q.answer()
-        return await ask_site_user(update, context)
-
-    # AMOUNT
->>>>>>> Stashed changes
     if data.startswith("amt:"):
         await q.answer()
         val = data.split(":", 1)[1]
         if val == "custom":
             set_state(context, S_CUSTOM_AMOUNT)
-<<<<<<< Updated upstream
             await q.edit_message_text(
                 f"כתוב סכום (מספרים בלבד). מינימום {CUSTOM_MIN_AMOUNT} ומעלה:",
                 reply_markup=back_home_kb("nav:back_amount")
             )
             save_client_menu(context, uid, update.effective_chat.id, q.message.message_id)
             return
-=======
-            return await q.edit_message_text(
-                f"כתוב סכום (מספרים בלבד). מינימום {CUSTOM_MIN_AMOUNT} ומעלה:",
-                reply_markup=back_home_kb("nav:back_to_amount")
-            )
->>>>>>> Stashed changes
         amount = int(val)
         context.user_data["amount"] = amount
         return await ask_site_user(update, context)
 
-<<<<<<< Updated upstream
-=======
-    # PAYMENT METHOD: user chooses -> wait + admin request
->>>>>>> Stashed changes
     if data.startswith("pm:"):
         await q.answer()
         method_key = data.split(":", 1)[1]
         context.user_data["method"] = method_key
-<<<<<<< Updated upstream
         amount = context.user_data.get("amount")
         site_user = context.user_data.get("site_user", "")
         if method_key == "bank":
@@ -2075,305 +1710,10 @@ async def cmd_cancelpay(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     clear_admin_pending(update.effective_user.id)
     await update.message.reply_text("Payment send mode cancelled. | Modo de envío de pago cancelado.")
-=======
-        set_state(context, S_WAIT_PAYMENT_DETAILS)
-
-        # user waiting message
-        await q.edit_message_text(
-            WAIT_FOR_DETAILS_TEXT,
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 תפריט ראשי", callback_data="nav:home")],
-                [InlineKeyboardButton("🔙 חזרה", callback_data="nav:back_to_siteuser")],
-            ])
-        )
-
-        # admin request message with guidance button
-        amount = context.user_data.get("amount")
-        site_user = context.user_data.get("site_user")
-        pm_label = dict(PAYMENT_METHODS).get(method_key, method_key)
-        username = update.effective_user.username or ""
-
-        example = ""
-        if method_key == "bit":
-            example = f"או פקודה מהירה:\n/bit {user_id} 05X-XXXXXXX"
-        elif method_key == "paybox":
-            example = f"או פקודה מהירה:\n/paybox {user_id} 05X-XXXXXXX"
-        else:
-            example = f"או פקודה מהירה:\n/bank {user_id} בנק ___ סניף ___ חשבון ___ שם ___"
-
-        admin_text = (
-            "🧾 בקשת פרטי תשלום (לפני אסמכתא)\n\n"
-            f"סכום: {amount}\n"
-            f"משתמש באתר: {site_user}\n"
-            f"שיטה שנבחרה: {pm_label}\n"
-            f"טלגרם: @{username} (user_id: {user_id})\n\n"
-            "לחץ על הכפתור כדי לשלוח פרטי תשלום בצורה נוחה (ואז שלח רק את המספר/פרטים בהודעה הבאה).\n\n"
-            f"{example}\n"
-        )
-
-        await context.bot.send_message(
-            chat_id=ADMIN_CHAT_ID,
-            text=admin_text,
-            reply_markup=admin_payment_details_kb(user_id, method_key)
-        )
-        return
-
-    # ADMIN GUIDED PAYMENT BUTTON
-    # adp:<method>:<user_id>
-    if data.startswith("adp:"):
-        if not is_admin(q.from_user.id):
-            await q.answer("אין הרשאה", show_alert=True)
-            return
-        _, method, uid = data.split(":")
-        uid = int(uid)
-
-        # store pending for this admin
-        set_admin_pending(q.from_user.id, uid, method)
-
-        method_name = {"bit": "Bit", "paybox": "PayBox", "bank": "העברה בנקאית"}.get(method, method)
-        hint = (
-            f"✅ מצב שליחה הופעל ({method_name}).\n"
-            f"שלח עכשיו בהודעה הבאה *רק* את הפרט המשתנה:\n"
-            f"- Bit/PayBox: מספר/שם\n"
-            f"- בנק: כל פרטי החשבון\n\n"
-            f"ברגע שתשלח — הבוט ישלח ללקוח תבנית מוכנה ויבקש צילום אסמכתא.\n"
-            f"לביטול מצב: /cancelpay"
-        )
-
-        await q.answer()
-        # send guidance message into admin chat
-        await context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=hint, parse_mode="Markdown")
-        return
-
-    # ADMIN ACTIONS
-    if data.startswith("ad:"):
-        return await on_admin_action(update, context)
-
-# =========================
-# USER TEXT
-# =========================
-async def on_user_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-
-    if is_locked(user_id):
-        return await update.message.reply_text("הפנייה שלך נמצאת בבדיקה מול נציג. בשלב זה אי אפשר להמשיך בבוט עד שתקבל עדכון.")
-
-    state = get_state(context)
-
-    # custom amount
-    if state == S_CUSTOM_AMOUNT:
-        txt = (update.message.text or "").strip()
-        if not txt.isdigit():
-            return await update.message.reply_text("אנא שלח מספרים בלבד.")
-        amount = int(txt)
-        if amount < CUSTOM_MIN_AMOUNT:
-            return await update.message.reply_text(f"סכום חייב להיות מינימום {CUSTOM_MIN_AMOUNT} ומעלה. נסה שוב.")
-        context.user_data["amount"] = amount
-        return await ask_site_user(update, context)
-
-    # site user
-    if state == S_SITE_USER:
-        site_user = (update.message.text or "").strip()
-        if len(site_user) < 2:
-            return await update.message.reply_text("שם משתמש קצר מדי. נסה שוב.")
-        context.user_data["site_user"] = site_user
-        return await ask_method(update, context)
-
-    # waiting states -> photo only
-    if state in (S_WAIT_PAYMENT_DETAILS, S_WAIT_RECEIPT):
-        return await update.message.reply_text(RECEIPT_ONLY_PHOTO_TEXT, parse_mode="Markdown")
-
-    return await update.message.reply_text("כדי להתחיל הפקדה לחץ /start")
-
-# =========================
-# USER PHOTO (receipt)
-# =========================
-async def on_user_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-
-    if is_locked(user_id):
-        return await update.message.reply_text("הפנייה שלך נמצאת בבדיקה מול נציג. בשלב זה אי אפשר להמשיך בבוט עד שתקבל עדכון.")
-
-    state = get_state(context)
-
-    # Accept photos only in WAIT_RECEIPT / WAIT_RECEIPT_MORE.
-    # BUT: after admin sends /sendpay, user will still be in WAIT_PAYMENT_DETAILS in memory.
-    # So we allow photo in WAIT_PAYMENT_DETAILS too (because user received details and can now send receipt).
-    if state not in (S_WAIT_PAYMENT_DETAILS, S_WAIT_RECEIPT, S_WAIT_RECEIPT_MORE):
-        return await update.message.reply_text("כדי לבצע הפקדה, לחץ /start והמשך לפי השלבים.")
-
-    amount = context.user_data.get("amount")
-    site_user = context.user_data.get("site_user")
-    method = context.user_data.get("method")
-    if not amount or not site_user or not method:
-        reset_flow(context)
-        return await update.message.reply_text("חסר מידע בתהליך. לחץ /start להתחלה מחדש.")
-
-    # Photo file id (best resolution)
-    file_id = update.message.photo[-1].file_id
-
-    # Create request id if not exists in this run
-    rid = context.user_data.get("request_id")
-    if not rid:
-        rid = gen_request_id()
-        context.user_data["request_id"] = rid
-        log_request(rid, user_id, update.effective_user.username or "", amount, site_user, method, "receipt_sent")
-    else:
-        # additional receipt
-        log_request(rid, user_id, update.effective_user.username or "", amount, site_user, method, "receipt_updated")
-
-    # User reply
-    await update.message.reply_text(AFTER_RECEIPT_TEXT)
-
-    # Send ticket to admins
-    pm_label = dict(PAYMENT_METHODS).get(method, method)
-    username = update.effective_user.username or ""
-    ticket_text = (
-        "🧾 בקשת הפקדה חדשה\n\n"
-        f"Request ID: {rid}\n\n"
-        f"סכום: {amount}\n\n"
-        f"משתמש במערכת: {site_user}\n\n"
-        f"שיטה: {pm_label}\n\n"
-        f"טלגרם: @{username} (user_id: {user_id})\n\n"
-        f"זמן: {now_utc()} UTC"
-    )
-
-    await context.bot.send_photo(
-        chat_id=ADMIN_CHAT_ID,
-        photo=file_id,
-        caption=ticket_text,
-        reply_markup=admin_receipt_ticket_kb(rid, user_id),
-    )
-
-    # Move to receipt waiting state (pending admin decision)
-    set_state(context, S_WAIT_RECEIPT)
-
-    # Reminder if admin asked for more will be scheduled later. For now, no reminder needed after receipt sent.
-
-# =========================
-# ADMIN TEXT (guided details capture)
-# =========================
-async def on_admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Only handle non-command text messages IN ADMIN CHAT from admins
-    if update.effective_chat.id != ADMIN_CHAT_ID:
-        return
-    admin_id = update.effective_user.id
-    if not is_admin(admin_id):
-        return
-
-    pending = get_admin_pending(admin_id)
-    if not pending:
-        return
-
-    user_id = int(pending["user_id"])
-    method = pending["method"]
-    details = (update.message.text or "").strip()
-
-    if not details:
-        return await update.message.reply_text("שלח טקסט עם הפרטים (מספר/פרטי חשבון). או /cancelpay לביטול.")
-
-    # send template to user
-    try:
-        await send_payment_details_and_request_photo(context, user_id, method, details)
-    except Exception:
-        await update.message.reply_text("לא הצלחתי לשלוח ללקוח. אולי הוא חסום/לא התחיל שיחה עם הבוט.")
-        return
-
-    clear_admin_pending(admin_id)
-
-    method_name = {"bit": "Bit", "paybox": "PayBox", "bank": "העברה בנקאית"}.get(method, method)
-    await update.message.reply_text(f"✅ נשלחו פרטי תשלום ללקוח ({method_name}). עכשיו מחכים לאסמכתא (תמונה בלבד).")
-
-# =========================
-# ADMIN INLINE ACTIONS (approve/problem/more + lock/unlock)
-# =========================
-async def on_admin_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    admin_id = q.from_user.id
-    logger.info(f"🔍 Admin action: admin_id={admin_id}, data={q.data}")
-    
-    if not is_admin(admin_id):
-        logger.warning(f"⚠️ User {admin_id} not in ADMIN_USER_IDS")
-        await q.answer("אין הרשאה", show_alert=True)
-        return
-
-    await q.answer()
-    parts = q.data.split(":")
-    logger.info(f"📊 Parsed data: parts={parts}")
-
-    # ad:unlock:<user_id> / ad:block:<user_id>
-    if parts[1] in ("unlock", "block"):
-        logger.info(f"✅ Processing unlock/block: {parts[1]}")
-        uid = int(parts[2])
-        if parts[1] == "unlock":
-            set_locked(uid, False)
-            try:
-                await context.bot.send_message(chat_id=uid, text="🔓 שוחררת. אפשר להתחיל הפקדה מחדש עם /start")
-            except Exception:
-                pass
-            if q.message.caption:
-                await q.edit_message_caption((q.message.caption or "") + "\n\n🔓 שוחרר נעילה")
-            else:
-                await q.edit_message_text((q.message.text or "") + "\n\n🔓 שוחרר נעילה")
-        else:
-            set_locked(uid, True)
-            if q.message.caption:
-                await q.edit_message_caption((q.message.caption or "") + "\n\n🚫 המשתמש ננעל/נחסם")
-            else:
-                await q.edit_message_text((q.message.text or "") + "\n\n🚫 המשתמש ננעל/נחסם")
-        return
-
-    # ad:<action>:<rid>:<user_id>
-    action = parts[1]
-    rid = parts[2]
-    uid = int(parts[3])
-    logger.info(f"📢 Admin action: {action}, rid={rid}, user_id={uid}")
-
-    if action == "ok":
-        logger.info(f"✅ Approving deposit for user {uid}")
-        set_locked(uid, False)
-        cancel_jobs_by_name(context.job_queue, f"rem_{uid}")
-
-        await context.bot.send_message(chat_id=uid, text=SUCCESS_TEXT)
-        schedule_return_to_menu(context, uid, uid)
-
-        if q.message.caption:
-            await q.edit_message_caption((q.message.caption or "") + "\n\n✅ סטטוס: בוצע בהצלחה")
-        else:
-            await q.edit_message_text((q.message.text or "") + "\n\n✅ סטטוס: בוצע בהצלחה")
-        return
-
-    if action == "problem":
-        set_locked(uid, True)
-        cancel_jobs_by_name(context.job_queue, f"rem_{uid}")
-
-        await context.bot.send_message(chat_id=uid, text=PROBLEM_TEXT)
-
-        if q.message.caption:
-            await q.edit_message_caption((q.message.caption or "") + "\n\n❌ סטטוס: בעיה (ננעל עד שחרור)")
-        else:
-            await q.edit_message_text((q.message.text or "") + "\n\n❌ סטטוס: בעיה (ננעל עד שחרור)")
-        return
-
-    if action == "more":
-        # ask for another photo
-        cancel_jobs_by_name(context.job_queue, f"rem_{uid}")
-        await context.bot.send_message(chat_id=uid, text=MORE_INFO_TEXT)
-
-        # schedule reminder again for the new receipt
-        schedule_receipt_reminder(context, uid, uid)
-
-        if q.message.caption:
-            await q.edit_message_caption((q.message.caption or "") + "\n\n🔄 סטטוס: ביקשנו אסמכתא חדשה")
-        else:
-            await q.edit_message_text((q.message.text or "") + "\n\n🔄 סטטוס: ביקשנו אסמכתא חדשה")
-        return
->>>>>>> Stashed changes
 
 # =========================
 # MAIN
 # =========================
-<<<<<<< Updated upstream
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     logger.error("Exception while handling update: %s", context.error, exc_info=context.error)
     if update and isinstance(update, Update):
@@ -2385,15 +1725,12 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
         except Exception:
             pass
 
-=======
->>>>>>> Stashed changes
 def main():
     if not BOT_TOKEN:
         raise SystemExit("BOT_TOKEN missing in .env")
     if ADMIN_CHAT_ID == 0:
         raise SystemExit("ADMIN_CHAT_ID missing in .env")
 
-<<<<<<< Updated upstream
     async def _check_admin_chat():
         """Verify we can send messages to ADMIN_CHAT_ID before accepting clients."""
         bot = Bot(BOT_TOKEN)
@@ -2445,41 +1782,9 @@ def main():
     app.add_handler(MessageHandler(private_filter & filters.Regex(re.compile(r"^(/start|start|התחל|התחלה)(\s|$)", re.I)), cmd_start), group=0)
     app.add_handler(MessageHandler(private_filter & (filters.PHOTO | filters.Document.IMAGE), on_client_photo), group=1)
     app.add_handler(MessageHandler(private_filter & filters.TEXT & ~filters.COMMAND, on_client_text), group=1)
-=======
-    init_db()
-
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-
-    # user
-    app.add_handler(CommandHandler("start", cmd_start))
-    app.add_handler(CommandHandler("myid", cmd_myid))
-
-    # admin shortcuts (optional)
-    app.add_handler(CommandHandler("unlock", cmd_unlock))
-    app.add_handler(CommandHandler("block", cmd_block))
-    app.add_handler(CommandHandler("bit", cmd_bit))
-    app.add_handler(CommandHandler("paybox", cmd_paybox))
-    app.add_handler(CommandHandler("bank", cmd_bank))
-    app.add_handler(CommandHandler("cancelpay", cmd_cancelpay))
-
-    # callbacks
-    app.add_handler(CallbackQueryHandler(on_callback))
-
-    # admin guided: non-command text in admin chat
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & filters.ChatType.SUPERGROUP, on_admin_text), group=0)
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & filters.ChatType.GROUP, on_admin_text), group=0)
-
-    # messages (פרטי + קבוצות, מלבד צ'אט אדמין)
-    app.add_handler(MessageHandler(filters.PHOTO & USER_CHAT_FILTER, on_user_photo), group=1)
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & USER_CHAT_FILTER, on_user_text), group=1)
->>>>>>> Stashed changes
 
     logger.info("Bot is running...")
     app.run_polling()
 
 if __name__ == "__main__":
-<<<<<<< Updated upstream
     main()
-=======
-    main()
->>>>>>> Stashed changes
