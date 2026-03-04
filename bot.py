@@ -249,6 +249,29 @@ def init_db():
     cur.execute(
         "INSERT OR IGNORE INTO bot_settings (key, value) VALUES ('enabled', 1)"
     )
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS users_notified_while_off (
+            user_id INTEGER PRIMARY KEY
+        )
+    """)
+    c.commit()
+    c.close()
+
+def add_user_notified_while_off(uid: int):
+    c = db()
+    c.cursor().execute("INSERT OR IGNORE INTO users_notified_while_off (user_id) VALUES (?)", (uid,))
+    c.commit()
+    c.close()
+
+def get_users_notified_while_off():
+    c = db()
+    rows = c.cursor().execute("SELECT user_id FROM users_notified_while_off").fetchall()
+    c.close()
+    return [r[0] for r in rows]
+
+def clear_users_notified_while_off():
+    c = db()
+    c.cursor().execute("DELETE FROM users_notified_while_off")
     c.commit()
     c.close()
 
@@ -858,6 +881,7 @@ async def ask_method(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     if not get_bot_enabled() and not is_admin(uid):
+        add_user_notified_while_off(uid)
         return await update.message.reply_text(BOT_UNAVAILABLE_TEXT)
     _apply_client_state_override(uid, context)
     state = get_state(context)
@@ -996,6 +1020,7 @@ async def ask_method(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     if not get_bot_enabled() and not is_admin(uid):
+        add_user_notified_while_off(uid)
         return await update.message.reply_text(BOT_UNAVAILABLE_TEXT)
     await show_start(update, context)
 
@@ -1013,6 +1038,7 @@ async def on_client_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await on_admin_callback(update, context)
         return
     if not get_bot_enabled() and not is_admin(uid):
+        add_user_notified_while_off(uid)
         await q.answer()
         return await q.edit_message_text(BOT_UNAVAILABLE_TEXT)
     _apply_client_state_override(uid, context)
@@ -1175,6 +1201,7 @@ async def on_client_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def on_client_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     if not get_bot_enabled() and not is_admin(uid):
+        add_user_notified_while_off(uid)
         return await update.message.reply_text(BOT_UNAVAILABLE_TEXT)
     _apply_client_state_override(uid, context)
     txt = (update.message.text or "").strip()
@@ -1412,6 +1439,7 @@ async def on_client_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def _on_client_photo_impl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     if not get_bot_enabled() and not is_admin(uid):
+        add_user_notified_while_off(uid)
         return await update.message.reply_text(BOT_UNAVAILABLE_TEXT)
     _apply_client_state_override(uid, context)
     if is_locked(uid):
@@ -1877,7 +1905,22 @@ async def cmd_on(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update.effective_user.id):
         return
     set_bot_enabled(True)
-    await update.message.reply_text("✅ הבוט הופעל – מקבל לקוחות.")
+    users = get_users_notified_while_off()
+    for uid in users:
+        try:
+            await context.bot.send_message(
+                chat_id=uid,
+                text=WELCOME_TEXT,
+                reply_markup=amounts_kb(),
+            )
+        except Exception as e:
+            logger.warning("Could not send menu to user %s after /on: %s", uid, e)
+    clear_users_notified_while_off()
+    count = len(users)
+    msg = "✅ הבוט הופעל – מקבל לקוחות."
+    if count:
+        msg += f"\nנשלח תפריט ראשי ל-{count} לקוחות שניסו להשתמש כשהבוט היה כבוי."
+    await update.message.reply_text(msg)
 
 async def cmd_off(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update.effective_user.id):
