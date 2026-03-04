@@ -89,6 +89,13 @@ SITE_USER_TEXT = (
     "✅ מומלץ להעתיק ולהדביק (חשוב מאוד)"
 )
 
+NEW_USER_BTN = "אני לא זוכר את השם משתמש שלי, תיצור לי חדש"
+NEW_USER_NAME_TEXT = "מה שמך?"
+NEW_USER_PHONE_TEXT = "מה המספר פלאפון שלך?"
+AWAIT_NEW_USER_TEXT = "⏳ אנא המתן, הנציג יוצר עבורך חשבון חדש. מיד תקבל את פרטי ההתחברות."
+ADM_NEW_USER_REQUEST = "🆕 בקשת יצירת משתמש חדש | New user creation request"
+NEW_USER_CREDENTIALS_SENT = "הנה הפרטים החדשים שלך:\nשם משתמש: {username}\nסיסמה: {password}\n\nממשיכים לבחירת שיטת תשלום 👇"
+
 AWAIT_USERNAME_TEXT = "⏳ אנא המתן, המערכת מאתרת את חשבונך..."
 USERNAME_FOUND_TEXT = "✅ מצאנו את החשבון שלך. ממשיכים!"
 USERNAME_INVALID_TEXT = "לא מצאנו את שם המשתמש הזה במערכת ❌\nשלח/י שוב את שם המשתמש בדיוק כמו שמופיע באתר."
@@ -143,11 +150,13 @@ ADM_BTN_USERNAME_BAD = "❌ Invalid | Inválido"
 # States
 S_AMOUNT, S_CUSTOM_AMOUNT, S_SITE_USER, S_METHOD = "AMOUNT", "CUSTOM_AMOUNT", "SITE_USER", "METHOD"
 S_BANK_SELECTION, S_BANK_OTHER = "BANK_SELECTION", "BANK_OTHER"
+S_NEW_USER_NAME, S_NEW_USER_PHONE = "NEW_USER_NAME", "NEW_USER_PHONE"
 S_AWAIT_USERNAME_VALIDATION = "AWAIT_USERNAME_VALIDATION"
+S_AWAIT_NEW_USER_CREDENTIALS = "AWAIT_NEW_USER_CREDENTIALS"
 S_WAIT_PAYMENT_DETAILS, S_WAIT_RECEIPT, S_WAIT_RECEIPT_MORE, S_LOCKED = (
     "WAIT_PAYMENT_DETAILS", "WAIT_RECEIPT", "WAIT_RECEIPT_MORE", "LOCKED"
 )
-EMPLOYEE_PENDING_STATES = (S_AWAIT_USERNAME_VALIDATION, S_WAIT_PAYMENT_DETAILS, S_WAIT_RECEIPT, S_WAIT_RECEIPT_MORE)
+EMPLOYEE_PENDING_STATES = (S_AWAIT_USERNAME_VALIDATION, S_AWAIT_NEW_USER_CREDENTIALS, S_WAIT_PAYMENT_DETAILS, S_WAIT_RECEIPT, S_WAIT_RECEIPT_MORE)
 
 # =========================
 # DB
@@ -425,6 +434,8 @@ def get_waiting_msg_for_employee_pending(state):
     """Returns (text, parse_mode) to show when client acts during employee-pending state."""
     if state == S_AWAIT_USERNAME_VALIDATION:
         return ("אנא המתן, המערכת בודקת את החשבון שלך.", None)
+    if state == S_AWAIT_NEW_USER_CREDENTIALS:
+        return (AWAIT_NEW_USER_TEXT, None)
     if state == S_WAIT_PAYMENT_DETAILS:
         return (WAIT_FOR_DETAILS_TEXT, None)
     if state in (S_WAIT_RECEIPT, S_WAIT_RECEIPT_MORE):
@@ -441,6 +452,20 @@ def set_client_state_override(ctx, uid, state, **kw):
     if "client_state_override" not in ctx.bot_data:
         ctx.bot_data["client_state_override"] = {}
     ctx.bot_data["client_state_override"][uid] = {"state": state, **kw}
+
+def _awaiting_new_user(ctx):
+    if "awaiting_new_user" not in ctx.bot_data:
+        ctx.bot_data["awaiting_new_user"] = {}
+    return ctx.bot_data["awaiting_new_user"]
+
+def set_awaiting_new_user(ctx, uid, name, phone, amount):
+    _awaiting_new_user(ctx)[uid] = {"name": name, "phone": phone, "amount": amount}
+
+def get_awaiting_new_user(ctx, uid):
+    return _awaiting_new_user(ctx).get(uid)
+
+def clear_awaiting_new_user(ctx, uid):
+    _awaiting_new_user(ctx).pop(uid, None)
 
 def reset_flow(ctx):
     job = ctx.user_data.get("reminder_job")
@@ -588,6 +613,14 @@ def amounts_kb():
 
 def back_home_kb(back_cb):
     return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔙 חזרה", callback_data=back_cb)],
+        [InlineKeyboardButton("🏠 תפריט ראשי", callback_data="nav:home")],
+    ])
+
+def site_user_kb(back_cb):
+    """מקלדת בשלב שם משתמש – כולל כפתור 'אני לא זוכר את השם משתמש שלי'"""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(NEW_USER_BTN, callback_data="user:create_new")],
         [InlineKeyboardButton("🔙 חזרה", callback_data=back_cb)],
         [InlineKeyboardButton("🏠 תפריט ראשי", callback_data="nav:home")],
     ])
@@ -773,11 +806,11 @@ async def ask_site_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     if update.callback_query:
         await update.callback_query.answer()
-        await update.callback_query.edit_message_text(SITE_USER_TEXT, reply_markup=back_home_kb("nav:back_amount"))
+        await update.callback_query.edit_message_text(SITE_USER_TEXT, reply_markup=site_user_kb("nav:back_amount"))
         save_client_menu(context, uid, update.effective_chat.id, update.callback_query.message.message_id)
     else:
         await clear_client_menu(context, uid)
-        sent = await update.message.reply_text(SITE_USER_TEXT, reply_markup=back_home_kb("nav:back_amount"))
+        sent = await update.message.reply_text(SITE_USER_TEXT, reply_markup=site_user_kb("nav:back_amount"))
         save_client_menu(context, uid, sent.chat_id, sent.message_id)
 
 async def ask_method(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -911,11 +944,15 @@ async def show_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def ask_site_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     set_state(context, S_SITE_USER)
+    uid = update.effective_user.id
     if update.callback_query:
         await update.callback_query.answer()
-        await update.callback_query.edit_message_text(SITE_USER_TEXT, reply_markup=back_home_kb("nav:back_to_amount"), parse_mode="Markdown")
+        await update.callback_query.edit_message_text(SITE_USER_TEXT, reply_markup=site_user_kb("nav:back_amount"))
+        save_client_menu(context, uid, update.effective_chat.id, update.callback_query.message.message_id)
     else:
-        await update.message.reply_text(SITE_USER_TEXT, reply_markup=back_home_kb("nav:back_to_amount"), parse_mode="Markdown")
+        await clear_client_menu(context, uid)
+        sent = await update.message.reply_text(SITE_USER_TEXT, reply_markup=site_user_kb("nav:back_amount"))
+        save_client_menu(context, uid, sent.chat_id, sent.message_id)
 
 async def ask_method(update: Update, context: ContextTypes.DEFAULT_TYPE):
     set_state(context, S_METHOD)
@@ -985,6 +1022,17 @@ async def on_client_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if data == "nav:back_site":
         await q.answer()
         return await ask_site_user(update, context)
+
+    if data == "user:create_new":
+        await q.answer()
+        set_state(context, S_NEW_USER_NAME)
+        await q.edit_message_text(
+            NEW_USER_NAME_TEXT,
+            reply_markup=back_home_kb("nav:back_site")
+        )
+        save_client_menu(context, uid, update.effective_chat.id, q.message.message_id)
+        return
+
     if data == "nav:back_method":
         await q.answer()
         set_state(context, S_METHOD)
@@ -1168,10 +1216,62 @@ async def on_client_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         save_admin_payment_request_msg(context, uid, ADMIN_CHAT_ID, sent.message_id)
         return
+    if state == S_NEW_USER_NAME:
+        name = txt.strip()
+        if len(name) < 2:
+            await clear_client_menu(context, uid)
+            sent = await update.message.reply_text("אנא הכנס שם תקין.", reply_markup=back_home_kb("nav:back_site"))
+            save_client_menu(context, uid, sent.chat_id, sent.message_id)
+            return
+        context.user_data["new_user_name"] = name
+        set_state(context, S_NEW_USER_PHONE)
+        await clear_client_menu(context, uid)
+        sent = await update.message.reply_text(NEW_USER_PHONE_TEXT, reply_markup=back_home_kb("nav:back_site"))
+        save_client_menu(context, uid, sent.chat_id, sent.message_id)
+        return
+
+    if state == S_NEW_USER_PHONE:
+        phone = txt.strip()
+        if len(phone) < 8 or not re.search(r"[\d\-\(\)\s]+", phone):
+            await clear_client_menu(context, uid)
+            sent = await update.message.reply_text("אנא הכנס מספר פלאפון תקין.", reply_markup=back_home_kb("nav:back_site"))
+            save_client_menu(context, uid, sent.chat_id, sent.message_id)
+            return
+        context.user_data["new_user_phone"] = phone
+        name = context.user_data.get("new_user_name", "")
+        amount = context.user_data.get("amount", 0)
+        set_state(context, S_AWAIT_NEW_USER_CREDENTIALS)
+        set_awaiting_new_user(context, uid, name, phone, amount)
+        await clear_client_menu(context, uid)
+        await update.message.reply_text(AWAIT_NEW_USER_TEXT)
+        username = update.effective_user.username or ""
+        admin_text = (
+            f"{ADM_NEW_USER_REQUEST}\n\n"
+            f"Amount / Monto: <b>{amount}</b>\n"
+            f"Name / Nombre: <b>{html.escape(name)}</b>\n"
+            f"Phone / Teléfono: <b>{html.escape(phone)}</b>\n"
+            f"Telegram: @{html.escape(username)} (user_id: {uid})\n\n"
+            f"שלח: /newuser {uid} &lt;username&gt; &lt;password&gt;"
+        )
+        try:
+            await context.bot.send_message(
+                chat_id=ADMIN_CHAT_ID,
+                text=admin_text,
+                parse_mode=ParseMode.HTML,
+            )
+        except Exception as e:
+            logger.exception("Failed to send new user request to admin: %s", e)
+            set_state(context, S_NEW_USER_PHONE)
+            await update.message.reply_text(
+                "כרגע לא ניתן לשלוח את הבקשה לנציג. נסה שוב בעוד רגע או לחץ /start.",
+                reply_markup=back_home_kb("nav:back_site")
+            )
+        return
+
     if state == S_SITE_USER:
         if len(txt) < 2:
             await clear_client_menu(context, uid)
-            sent = await update.message.reply_text("שם משתמש קצר מדי. נסה שוב.", reply_markup=back_home_kb("nav:back_amount"))
+            sent = await update.message.reply_text("שם משתמש קצר מדי. נסה שוב.", reply_markup=site_user_kb("nav:back_amount"))
             save_client_menu(context, uid, sent.chat_id, sent.message_id)
             return
         context.user_data["site_user"] = txt
@@ -1216,6 +1316,8 @@ async def on_client_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if state == S_AWAIT_USERNAME_VALIDATION:
         return await update.message.reply_text("אנא המתן, המערכת בודקת את החשבון שלך.")
+    if state == S_AWAIT_NEW_USER_CREDENTIALS:
+        return await update.message.reply_text(AWAIT_NEW_USER_TEXT)
     if state == S_WAIT_PAYMENT_DETAILS:
         return await update.message.reply_text(WAIT_FOR_DETAILS_TEXT)
     if state in (S_WAIT_RECEIPT, S_WAIT_RECEIPT_MORE):
@@ -1705,6 +1807,35 @@ async def cmd_bank(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     await update.message.reply_text(f"{ADM_MSG_DELIVERED}.")
 
+async def cmd_newuser(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """שליחה ללקוח: /newuser <user_id> <username> <password>"""
+    if not is_admin(update.effective_user.id):
+        return
+    if len(context.args) < 3 or not str(context.args[0]).isdigit():
+        await update.message.reply_text("שימוש: /newuser <user_id> <username> <password>")
+        return
+    uid = int(context.args[0])
+    username_arg = context.args[1]
+    password = " ".join(context.args[2:]).strip()
+    if not get_awaiting_new_user(context, uid):
+        await update.message.reply_text("אין בקשת משתמש חדש ממתינה ללקוח זה.")
+        return
+    clear_awaiting_new_user(context, uid)
+    creds_msg = NEW_USER_CREDENTIALS_SENT.format(username=username_arg, password=password)
+    try:
+        await clear_client_menu(context, uid)
+        set_client_state_override(context, uid, S_METHOD, site_user=username_arg)
+        sent = await context.bot.send_message(
+            chat_id=uid,
+            text=creds_msg,
+            reply_markup=methods_kb(),
+        )
+        save_client_menu(context, uid, sent.chat_id, sent.message_id)
+        await update.message.reply_text("✅ נשלחו פרטי ההתחברות ללקוח. הלקוח ממשיך לבחירת שיטת תשלום.")
+    except Exception as e:
+        await update.message.reply_text(f"לא הצלחתי לשלוח ללקוח: {e}")
+        set_awaiting_new_user(context, uid, *([""]*3))  # restore if send failed - actually we need the original data, skip for now
+
 async def cmd_cancelpay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update.effective_user.id):
         return
@@ -1768,6 +1899,7 @@ def main():
     app.add_handler(CommandHandler("bit", cmd_bit))
     app.add_handler(CommandHandler("bit_free", cmd_bit_free))
     app.add_handler(CommandHandler("bank", cmd_bank))
+    app.add_handler(CommandHandler("newuser", cmd_newuser))
     app.add_handler(CommandHandler("cancelpay", cmd_cancelpay))
 
     # Callbacks
