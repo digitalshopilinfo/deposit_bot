@@ -125,7 +125,7 @@ MORE_INFO_TEXT = (
 )
 
 REMINDER_TEXT = "⏱️ תזכורת: אם כבר ביצעת תשלום – שלח/י צילום מסך של האסמכתא כדי להשלים את ההפקדה."
-BOT_UNAVAILABLE_TEXT = "⏸ השירות לא זמין כרגע. נחזור בהקדם!"
+BOT_UNAVAILABLE_TEXT = "כרגע הבוט לא פעיל, ניתן להפקיד דרך הסוכן האישי שלכם בווצאפ"
 REMINDER_MINUTES = 8
 RETURN_TO_MENU_SECONDS = 120
 
