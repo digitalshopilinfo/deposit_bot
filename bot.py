@@ -1251,7 +1251,7 @@ async def on_client_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Name / Nombre: <b>{html.escape(name)}</b>\n"
             f"Phone / Teléfono: <b>{html.escape(phone)}</b>\n"
             f"Telegram: @{html.escape(username)} (user_id: {uid})\n\n"
-            f"/newuser {uid} &lt;username&gt; &lt;password&gt;"
+            f"/newuser {uid} **username** **password**"
         )
         try:
             await context.bot.send_message(
