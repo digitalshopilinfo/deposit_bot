@@ -125,7 +125,7 @@ MORE_INFO_TEXT = (
 )
 
 REMINDER_TEXT = "⏱️ תזכורת: אם כבר ביצעת תשלום – שלח/י צילום מסך של האסמכתא כדי להשלים את ההפקדה."
-BOT_UNAVAILABLE_TEXT = "**להפקדות ניתן לפנות לסוכן האישי שלכם ב־WhatsApp 📱**"
+BOT_UNAVAILABLE_TEXT = "⚠️ הבוט אינו פעיל כרגע.\nלהפקדות ניתן לפנות לסוכן האישי שלכם ב־WhatsApp 📱"
 REMINDER_MINUTES = 8
 RETURN_TO_MENU_SECONDS = 120
 
@@ -882,7 +882,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     if not get_bot_enabled() and not is_admin(uid):
         add_user_notified_while_off(uid)
-        return await update.message.reply_text(BOT_UNAVAILABLE_TEXT, parse_mode="Markdown")
+        return await update.message.reply_text(BOT_UNAVAILABLE_TEXT)
     _apply_client_state_override(uid, context)
     state = get_state(context)
     if state in EMPLOYEE_PENDING_STATES:
@@ -1021,7 +1021,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     if not get_bot_enabled() and not is_admin(uid):
         add_user_notified_while_off(uid)
-        return await update.message.reply_text(BOT_UNAVAILABLE_TEXT, parse_mode="Markdown")
+        return await update.message.reply_text(BOT_UNAVAILABLE_TEXT)
     await show_start(update, context)
 
 async def cmd_myid(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1040,7 +1040,7 @@ async def on_client_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not get_bot_enabled() and not is_admin(uid):
         add_user_notified_while_off(uid)
         await q.answer()
-        return await q.edit_message_text(BOT_UNAVAILABLE_TEXT, parse_mode="Markdown")
+        return await q.edit_message_text(BOT_UNAVAILABLE_TEXT)
     _apply_client_state_override(uid, context)
     state = get_state(context)
     if is_locked(uid):
@@ -1202,7 +1202,7 @@ async def on_client_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     if not get_bot_enabled() and not is_admin(uid):
         add_user_notified_while_off(uid)
-        return await update.message.reply_text(BOT_UNAVAILABLE_TEXT, parse_mode="Markdown")
+        return await update.message.reply_text(BOT_UNAVAILABLE_TEXT)
     _apply_client_state_override(uid, context)
     txt = (update.message.text or "").strip()
     state = get_state(context)
@@ -1440,7 +1440,7 @@ async def _on_client_photo_impl(update: Update, context: ContextTypes.DEFAULT_TY
     uid = update.effective_user.id
     if not get_bot_enabled() and not is_admin(uid):
         add_user_notified_while_off(uid)
-        return await update.message.reply_text(BOT_UNAVAILABLE_TEXT, parse_mode="Markdown")
+        return await update.message.reply_text(BOT_UNAVAILABLE_TEXT)
     _apply_client_state_override(uid, context)
     if is_locked(uid):
         if get_lock_reason(uid) == "problem":
