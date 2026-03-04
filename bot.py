@@ -125,6 +125,7 @@ MORE_INFO_TEXT = (
 )
 
 REMINDER_TEXT = "⏱️ תזכורת: אם כבר ביצעת תשלום – שלח/י צילום מסך של האסמכתא כדי להשלים את ההפקדה."
+BOT_UNAVAILABLE_TEXT = "⏸ השירות לא זמין כרגע. נחזור בהקדם!"
 REMINDER_MINUTES = 8
 RETURN_TO_MENU_SECONDS = 120
 
@@ -239,6 +240,30 @@ def init_db():
         cur.execute("ALTER TABLE locks ADD COLUMN lock_reason TEXT")
     except sqlite3.OperationalError:
         pass
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS bot_settings (
+            key TEXT PRIMARY KEY,
+            value INTEGER NOT NULL
+        )
+    """)
+    cur.execute(
+        "INSERT OR IGNORE INTO bot_settings (key, value) VALUES ('enabled', 1)"
+    )
+    c.commit()
+    c.close()
+
+def get_bot_enabled():
+    c = db()
+    r = c.cursor().execute("SELECT value FROM bot_settings WHERE key='enabled'").fetchone()
+    c.close()
+    return bool(r and r[0])
+
+def set_bot_enabled(enabled: bool):
+    c = db()
+    c.cursor().execute(
+        "INSERT OR REPLACE INTO bot_settings (key, value) VALUES ('enabled', ?)",
+        (1 if enabled else 0,)
+    )
     c.commit()
     c.close()
 
@@ -832,6 +857,8 @@ async def ask_method(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # =========================
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
+    if not get_bot_enabled() and not is_admin(uid):
+        return await update.message.reply_text(BOT_UNAVAILABLE_TEXT)
     _apply_client_state_override(uid, context)
     state = get_state(context)
     if state in EMPLOYEE_PENDING_STATES:
@@ -967,6 +994,9 @@ async def ask_method(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # USER COMMANDS
 # =========================
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    if not get_bot_enabled() and not is_admin(uid):
+        return await update.message.reply_text(BOT_UNAVAILABLE_TEXT)
     await show_start(update, context)
 
 async def cmd_myid(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -982,6 +1012,9 @@ async def on_client_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if data.startswith("ad:"):
         await on_admin_callback(update, context)
         return
+    if not get_bot_enabled() and not is_admin(uid):
+        await q.answer()
+        return await q.edit_message_text(BOT_UNAVAILABLE_TEXT)
     _apply_client_state_override(uid, context)
     state = get_state(context)
     if is_locked(uid):
@@ -1141,6 +1174,8 @@ async def on_client_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
 # =========================
 async def on_client_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
+    if not get_bot_enabled() and not is_admin(uid):
+        return await update.message.reply_text(BOT_UNAVAILABLE_TEXT)
     _apply_client_state_override(uid, context)
     txt = (update.message.text or "").strip()
     state = get_state(context)
@@ -1376,6 +1411,8 @@ async def on_client_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def _on_client_photo_impl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
+    if not get_bot_enabled() and not is_admin(uid):
+        return await update.message.reply_text(BOT_UNAVAILABLE_TEXT)
     _apply_client_state_override(uid, context)
     if is_locked(uid):
         if get_lock_reason(uid) == "problem":
@@ -1836,6 +1873,18 @@ async def cmd_newuser(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"לא הצלחתי לשלוח ללקוח: {e}")
         set_awaiting_new_user(context, uid, *([""]*3))  # restore if send failed - actually we need the original data, skip for now
 
+async def cmd_on(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update.effective_user.id):
+        return
+    set_bot_enabled(True)
+    await update.message.reply_text("✅ הבוט הופעל – מקבל לקוחות.")
+
+async def cmd_off(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update.effective_user.id):
+        return
+    set_bot_enabled(False)
+    await update.message.reply_text("⏸ הבוט כובה – לא מקבל לקוחות.")
+
 async def cmd_cancelpay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update.effective_user.id):
         return
@@ -1894,6 +1943,8 @@ def main():
     # Commands
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("myid", cmd_myid))
+    app.add_handler(CommandHandler("on", cmd_on))
+    app.add_handler(CommandHandler("off", cmd_off))
     app.add_handler(CommandHandler("unlock", cmd_unlock))
     app.add_handler(CommandHandler("block", cmd_block))
     app.add_handler(CommandHandler("bit", cmd_bit))
