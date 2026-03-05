@@ -48,7 +48,9 @@ CUSTOM_MIN_AMOUNT = 1000
 
 PAYMENT_METHODS = [
     ("bit", "🟢 תשלום בביט"),
+    ("paybox", "📱 פייבוקס"),
     ("bank", "🏦 העברה בנקאית"),
+    ("credit_link", "💳 לינק מאובטח לאשראי (אפל פאי/גוגל פאי)"),
 ]
 
 # סדר לשני טורים: ימני (שורות 0-3) | שמאלי (שורות 0-3)
@@ -687,12 +689,9 @@ def client_nav_kb(back_cb="nav:home"):
     ])
 
 def methods_kb():
-    # שורה 1: תשלום בביט | שורה 2: העברה בנקאית | שורה 3: חזרה + תפריט ראשי
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🟢 תשלום בביט", callback_data="pm:bit")],
-        [InlineKeyboardButton("🏦 העברה בנקאית", callback_data="pm:bank")],
-        [InlineKeyboardButton("🔙 חזרה", callback_data="nav:back_site"), InlineKeyboardButton("🏠 תפריט ראשי", callback_data="nav:home")],
-    ])
+    rows = [[InlineKeyboardButton(lbl, callback_data=f"pm:{key}")] for key, lbl in PAYMENT_METHODS]
+    rows.append([InlineKeyboardButton("🔙 חזרה", callback_data="nav:back_site"), InlineKeyboardButton("🏠 תפריט ראשי", callback_data="nav:home")])
+    return InlineKeyboardMarkup(rows)
 
 def banks_kb():
     rows = []
@@ -729,6 +728,14 @@ def admin_payment_request_kb(user_id):
 def template_bit(details):
     return f"ביט לפה:\n{html.escape(details)}\n<b>לא לשמור את המספר, להעביר ישר למספר דרך הביט</b>\n<b>לא לרשום כלום בסיבת ההעברה</b>\n\nשלח עכשיו צילום מסך של האסמכתא (תמונה בלבד)."
 
+def template_paybox(details):
+    return (
+        f"פייבוקס לפה:\n{html.escape(details)}\n"
+        "<b>לא לשמור את המספר, להעביר ישר למספר דרך הפייבוקס</b>\n"
+        "<b>לא לרשום כלום בסיבת ההעברה</b>\n"
+        "ולשלוח צילום מסך בבקשה"
+    )
+
 def template_bank(details):
     """Format bank details for client - each field on separate line."""
     raw = details.strip().replace("\r\n", "\n").replace("\r", "\n")
@@ -764,12 +771,16 @@ async def send_payment_to_user(ctx, user_id, method, details):
         msg = template_bit(details)
     elif method == "bit_free":
         msg = details
+    elif method == "paybox":
+        msg = template_paybox(details)
+    elif method == "credit_link":
+        msg = details
     else:
         msg = template_bank(details)
     nav_kb = InlineKeyboardMarkup([
         [InlineKeyboardButton("🔙 חזרה", callback_data="nav:back_method"), InlineKeyboardButton("🏠 תפריט ראשי", callback_data="nav:home")],
     ])
-    parse_mode = None if method == "bit_free" else ParseMode.HTML
+    parse_mode = None if method in ("bit_free", "credit_link") else ParseMode.HTML
     await clear_client_menu(ctx, user_id)
     sent = await ctx.bot.send_message(chat_id=user_id, text=msg, parse_mode=parse_mode, reply_markup=nav_kb)
     save_client_menu(ctx, user_id, sent.chat_id, sent.message_id)
@@ -1129,17 +1140,24 @@ async def on_client_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await q.edit_message_text(WAIT_FOR_DETAILS_TEXT, reply_markup=None)
         amount = amount or context.user_data.get("amount")
         site_user = site_user or context.user_data.get("site_user", "")
-        pm_label = "Bit"
+        pm_labels = {"bit": "Bit", "paybox": "PayBox", "credit_link": "לינק אשראי (אפל פאי/גוגל פאי)"}
+        pm_label = pm_labels.get(method_key, method_key)
         username = update.effective_user.username or ""
-        example_bit = f"/bit {uid} 05X-XXXXXXX"
-        example_bit_free = f"/bit_free {uid}"
+        if method_key == "bit":
+            examples = f"/bit {uid} 05X-XXXXXXX\n/bit_free {uid}"
+        elif method_key == "paybox":
+            examples = f"/paybox {uid} 05X-XXXXXXX"
+        elif method_key == "credit_link":
+            examples = f"/creditlink {uid} <הדבק כאן את הלינק>"
+        else:
+            examples = f"/bit {uid} 05X-XXXXXXX"
         admin_text = (
             f"{ADM_PAYMENT_REQUEST}\n\n"
             f"Amount / Monto: <b>{amount}</b>\n"
             f"User / Usuario: <b>{html.escape(str(site_user))}</b>\n"
             f"Method / Método: <b>{html.escape(pm_label)}</b>\n"
             f"Telegram: @{username} (user_id: {uid})\n\n"
-            f"{example_bit}\n{example_bit_free}"
+            f"{examples}"
         )
         sent = await context.bot.send_message(
             chat_id=ADMIN_CHAT_ID,
@@ -1459,7 +1477,7 @@ async def _on_client_photo_impl(update: Update, context: ContextTypes.DEFAULT_TY
             else:
                 return await update.message.reply_text(RECEIPT_ONLY_PHOTO_TEXT, parse_mode="Markdown")
             await update.message.reply_text(AFTER_RECEIPT_TEXT)
-            pm_label = {"bit": "Bit", "bank": "Bank transfer"}.get(req["method"], req["method"])
+            pm_label = {"bit": "Bit", "bank": "Bank transfer", "paybox": "PayBox", "credit_link": "Credit link"}.get(req["method"], req["method"])
             bank = context.user_data.get("bank", "") or (get_client_pending(uid) or {}).get("bank", "")
             username = update.effective_user.username or ""
             ticket = (
@@ -1530,7 +1548,7 @@ async def _on_client_photo_impl(update: Update, context: ContextTypes.DEFAULT_TY
 
     await update.message.reply_text(AFTER_RECEIPT_TEXT)
 
-    pm_label = {"bit": "Bit", "bank": "Transferencia bancaria"}.get(method, method)
+    pm_label = {"bit": "Bit", "bank": "Transferencia bancaria", "paybox": "PayBox", "credit_link": "Credit link"}.get(method, method)
     bank = context.user_data.get("bank", "")
     username = update.effective_user.username or ""
     ticket = (
@@ -1852,6 +1870,41 @@ async def cmd_bit_free(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     await update.message.reply_text(f"{ADM_MSG_DELIVERED}.")
 
+async def cmd_paybox(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update.effective_user.id):
+        return
+    if len(context.args) < 2 or not str(context.args[0]).isdigit():
+        await update.message.reply_text("Usage: /paybox <user_id> <number> | Uso: /paybox <user_id> <número>")
+        return
+    uid = int(context.args[0])
+    details = " ".join(context.args[1:]).strip()
+    try:
+        await send_payment_to_user(context, uid, "paybox", details)
+    except Exception as e:
+        await update.message.reply_text(f"❌ Could not send | No se pudo enviar: {e}")
+        return
+    await update.message.reply_text(f"{ADM_MSG_DELIVERED}.")
+
+async def cmd_creditlink(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update.effective_user.id):
+        return
+    text = (update.message.text or "").strip()
+    parts = text.split(maxsplit=2)
+    if len(parts) < 2 or not parts[1].isdigit():
+        await update.message.reply_text("Usage: /creditlink <user_id> <הדבק את הלינק>")
+        return
+    uid = int(parts[1])
+    details = (parts[2].strip() if len(parts) >= 3 else "")
+    if not details:
+        await update.message.reply_text("Usage: /creditlink <user_id> <הדבק את הלינק>")
+        return
+    try:
+        await send_payment_to_user(context, uid, "credit_link", details)
+    except Exception as e:
+        await update.message.reply_text(f"❌ Could not send | No se pudo enviar: {e}")
+        return
+    await update.message.reply_text(f"{ADM_MSG_DELIVERED}.")
+
 async def cmd_bank(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update.effective_user.id):
         return
@@ -1992,6 +2045,8 @@ def main():
     app.add_handler(CommandHandler("block", cmd_block))
     app.add_handler(CommandHandler("bit", cmd_bit))
     app.add_handler(CommandHandler("bit_free", cmd_bit_free))
+    app.add_handler(CommandHandler("paybox", cmd_paybox))
+    app.add_handler(CommandHandler("creditlink", cmd_creditlink))
     app.add_handler(CommandHandler("bank", cmd_bank))
     app.add_handler(CommandHandler("newuser", cmd_newuser))
     app.add_handler(CommandHandler("cancelpay", cmd_cancelpay))
