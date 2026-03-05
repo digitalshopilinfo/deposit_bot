@@ -1148,7 +1148,7 @@ async def on_client_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         elif method_key == "paybox":
             examples = f"/paybox {uid} 05X-XXXXXXX"
         elif method_key == "credit_link":
-            examples = f"/creditlink {uid} <הדבק כאן את הלינק>"
+            examples = f"/creditlink {uid} " + html.escape("<הדבק כאן את הלינק>")
         else:
             examples = f"/bit {uid} 05X-XXXXXXX"
         admin_text = (
