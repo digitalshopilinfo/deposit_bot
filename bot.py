@@ -256,6 +256,19 @@ def init_db():
             user_id INTEGER PRIMARY KEY
         )
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS bot_users (
+            user_id INTEGER PRIMARY KEY
+        )
+    """)
+    # מילוי משתמשים קיימים מטבלת requests
+    try:
+        cur.execute("""
+            INSERT OR IGNORE INTO bot_users (user_id)
+            SELECT DISTINCT user_id FROM requests WHERE user_id IS NOT NULL
+        """)
+    except sqlite3.OperationalError:
+        pass
     c.commit()
     c.close()
 
@@ -276,6 +289,19 @@ def clear_users_notified_while_off():
     c.cursor().execute("DELETE FROM users_notified_while_off")
     c.commit()
     c.close()
+
+def add_bot_user(uid: int):
+    """מוסיף משתמש לרשימת הלקוחות (לצורך broadcast)."""
+    c = db()
+    c.cursor().execute("INSERT OR IGNORE INTO bot_users (user_id) VALUES (?)", (uid,))
+    c.commit()
+    c.close()
+
+def get_all_bot_users():
+    c = db()
+    rows = c.cursor().execute("SELECT user_id FROM bot_users").fetchall()
+    c.close()
+    return [r[0] for r in rows]
 
 def get_bot_enabled():
     c = db()
@@ -891,6 +917,7 @@ async def ask_method(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # =========================
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
+    add_bot_user(uid)
     if not get_bot_enabled() and not is_admin(uid):
         add_user_notified_while_off(uid)
         return await update.message.reply_text(BOT_UNAVAILABLE_TEXT)
@@ -1030,6 +1057,7 @@ async def ask_method(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # =========================
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
+    add_bot_user(uid)
     if not get_bot_enabled() and not is_admin(uid):
         add_user_notified_while_off(uid)
         return await update.message.reply_text(BOT_UNAVAILABLE_TEXT)
@@ -1044,6 +1072,7 @@ async def cmd_myid(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def on_client_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     uid = update.effective_user.id
+    add_bot_user(uid)
     data = q.data
     if data.startswith("ad:"):
         await on_admin_callback(update, context)
@@ -1218,6 +1247,7 @@ async def on_client_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
 # =========================
 async def on_client_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
+    add_bot_user(uid)
     if not get_bot_enabled() and not is_admin(uid):
         add_user_notified_while_off(uid)
         return await update.message.reply_text(BOT_UNAVAILABLE_TEXT)
@@ -1456,6 +1486,7 @@ async def on_client_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def _on_client_photo_impl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
+    add_bot_user(uid)
     if not get_bot_enabled() and not is_admin(uid):
         add_user_notified_while_off(uid)
         return await update.message.reply_text(BOT_UNAVAILABLE_TEXT)
@@ -1783,10 +1814,35 @@ async def on_admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         _schedule_receipt_reminder(context, uid)
 
 # =========================
-# ADMIN: text (admin chat only) - guided payment details
+# ADMIN: text (admin chat only) - guided payment details + broadcast
 # =========================
+def _set_pending_broadcast(ctx, admin_id):
+    ctx.bot_data["pending_broadcast"] = admin_id
+
+def _clear_pending_broadcast(ctx):
+    ctx.bot_data.pop("pending_broadcast", None)
+
 async def on_admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update.effective_user.id):
+        return
+    admin_id = update.effective_user.id
+    # בדיקה: האם העובד במצב שליחת broadcast?
+    if context.bot_data.get("pending_broadcast") == admin_id:
+        msg = (update.message.text or "").strip()
+        if not msg:
+            await update.message.reply_text("שלח את תוכן ההודעה לשליחה. או /cancelbroadcast לביטול.")
+            return
+        _clear_pending_broadcast(context)
+        users = get_all_bot_users()
+        sent, failed = 0, 0
+        for uid in users:
+            try:
+                await context.bot.send_message(chat_id=uid, text=msg)
+                sent += 1
+            except Exception as e:
+                failed += 1
+                logger.warning("Broadcast to %s failed: %s", uid, e)
+        await update.message.reply_text(f"✅ נשלח ל-{sent} לקוחות. נכשל: {failed}.")
         return
     pending = get_admin_pending(update.effective_user.id)
     if not pending:
@@ -1981,6 +2037,23 @@ async def cmd_off(update: Update, context: ContextTypes.DEFAULT_TYPE):
     set_bot_enabled(False)
     await update.message.reply_text("⏸ הבוט כובה – לא מקבל לקוחות.")
 
+async def cmd_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """שליחת עדכון/מבצע לכל הלקוחות. רק אדמין."""
+    if not is_admin(update.effective_user.id):
+        return
+    _set_pending_broadcast(context, update.effective_user.id)
+    await update.message.reply_text(
+        "📢 מצב שליחת הודעה לכל הלקוחות הופעל.\n"
+        "שלח עכשיו את התוכן (מבצע, הטבה, עדכון וכו׳) – והוא יישלח לכל הלקוחות שדיברו אי פעם עם הבוט.\n\n"
+        "לביטול: /cancelbroadcast"
+    )
+
+async def cmd_cancelbroadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update.effective_user.id):
+        return
+    _clear_pending_broadcast(context)
+    await update.message.reply_text("בוטל מצב השליחה להמון.")
+
 async def cmd_cancelpay(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update.effective_user.id):
         return
@@ -2041,6 +2114,8 @@ def main():
     app.add_handler(CommandHandler("myid", cmd_myid))
     app.add_handler(CommandHandler("on", cmd_on))
     app.add_handler(CommandHandler("off", cmd_off))
+    app.add_handler(CommandHandler("broadcast", cmd_broadcast))
+    app.add_handler(CommandHandler("cancelbroadcast", cmd_cancelbroadcast))
     app.add_handler(CommandHandler("unlock", cmd_unlock))
     app.add_handler(CommandHandler("block", cmd_block))
     app.add_handler(CommandHandler("bit", cmd_bit))
