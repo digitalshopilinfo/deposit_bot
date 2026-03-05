@@ -498,7 +498,12 @@ def clear_awaiting_username(user_id):
 # HELPERS
 # =========================
 def is_admin(uid):
-    return uid in ADMIN_USER_IDS
+    if uid in ADMIN_USER_IDS:
+        return True
+    # אם ADMIN_CHAT_ID הוא צ'אט פרטי, בעל הצ'אט הוא אדמין (fallback)
+    if ADMIN_CHAT_ID > 0 and uid == ADMIN_CHAT_ID:
+        return True
+    return False
 
 def set_state(ctx, state):
     ctx.user_data["state"] = state
@@ -1248,6 +1253,24 @@ async def on_client_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def on_client_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     add_bot_user(uid)
+    # אדמין שולח טקסט בצ'אט פרטי במצב broadcast – לטפל כאן (on_admin_text רואה רק ADMIN_CHAT_ID)
+    if is_admin(uid) and context.bot_data.get("pending_broadcast") == uid:
+        msg = (update.message.text or "").strip()
+        if not msg:
+            await update.message.reply_text("שלח את תוכן ההודעה לשליחה. או /cancelbroadcast לביטול.")
+            return
+        _clear_pending_broadcast(context)
+        users = get_all_bot_users()
+        sent, failed = 0, 0
+        for u in users:
+            try:
+                await context.bot.send_message(chat_id=u, text=msg)
+                sent += 1
+            except Exception as e:
+                failed += 1
+                logger.warning("Broadcast to %s failed: %s", u, e)
+        await update.message.reply_text(f"✅ נשלח ל-{sent} לקוחות. נכשל: {failed}.")
+        return
     if not get_bot_enabled() and not is_admin(uid):
         add_user_notified_while_off(uid)
         return await update.message.reply_text(BOT_UNAVAILABLE_TEXT)
@@ -2040,6 +2063,10 @@ async def cmd_off(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """שליחת עדכון/מבצע לכל הלקוחות. רק אדמין."""
     if not is_admin(update.effective_user.id):
+        await update.message.reply_text(
+            "❌ אין הרשאה. הוסף את ה־User ID שלך ל־ADMIN_USER_IDS בקובץ .env\n"
+            "(שלח /myid לבוט כדי לראות את המספר שלך)"
+        )
         return
     _set_pending_broadcast(context, update.effective_user.id)
     await update.message.reply_text(
